@@ -438,6 +438,60 @@ Runbooks for setting up extra tooling alongside graphify. None of these are requ
 |---|---|
 | Docker MCP Toolkit + SQLite MCP server (lightweight persistent SQL workspace exposed to any MCP client) | [`docs/docker-mcp-sqlite.md`](docs/docker-mcp-sqlite.md) |
 
+## Docker (CLI + service)
+
+This repo includes a Docker image that runs the original `graphify` CLI directly.
+
+The first Docker version used a small `graphify.docker_cli` wrapper so the image could behave like a one-shot scanner and optionally push to Neo4j. That was convenient for one narrow flow, but it hid part of the real CLI. The image now uses the installed `graphify` console script as its entrypoint, so every first-party subcommand is available.
+
+### Build
+
+```bash
+docker build -t graphify:local .
+```
+
+### CLI
+
+Show the original CLI help:
+
+```bash
+docker run --rm graphify:local --help
+```
+
+Run any graphify subcommand against a mounted working directory:
+
+```bash
+docker run --rm \
+  -v "$PWD":/workspace \
+  graphify:local \
+  update .
+```
+
+Examples:
+
+```bash
+# Watch a mounted corpus and rebuild graphify-out/ on code changes
+docker run --rm -v "$PWD":/workspace graphify:local watch .
+
+# Query an existing graph
+docker run --rm -v "$PWD":/workspace graphify:local query "show the auth flow"
+
+# Serve an existing graph as MCP stdio
+docker run --rm -v "$PWD":/workspace --entrypoint python graphify:local -m graphify.serve graphify-out/graph.json
+```
+
+### Service (watch mode)
+
+A `docker-compose.yaml` is provided as a reference deployment. The `graphify` service is a dependency-free CLI helper, while `graphify-service` runs `graphify watch .` continuously against `./data`.
+
+```bash
+# CLI helper
+docker compose run --rm graphify --help
+
+# Long-running watcher
+docker compose up --build graphify-service
+```
+
 ## Tech stack
 
 NetworkX + Leiden (graspologic) + tree-sitter + vis.js. Semantic extraction via Claude (Claude Code), GPT-4 (Codex), or whichever model your platform runs. Video transcription via faster-whisper + yt-dlp (optional, `pip install graphifyy[video]`). No Neo4j required, no server, runs entirely locally.
